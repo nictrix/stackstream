@@ -1,0 +1,8 @@
+require 'stackstream/version'
+require 'stackstream/aws_vpc'
+require 'stackstream/aws_vpc_subnet'
+require 'stackstream/aws_route_table'
+require 'stackstream/aws_route_table_association'
+require 'stackstream/aws_internet_gateway'
+require 'stackstream/aws_security_group'
+require 'stackstream/aws_security_group_rule'
