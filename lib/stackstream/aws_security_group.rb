@@ -22,22 +22,18 @@ module Stackstream
 
     def name(v)
       @name = v
-      self
     end
 
     def description(v)
       @description = v
-      self
     end
 
     def vpc(v)
       @vpc = v.provider_id
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

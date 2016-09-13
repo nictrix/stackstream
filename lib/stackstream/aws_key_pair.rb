@@ -22,12 +22,10 @@ module Stackstream
 
     def key_name(v)
       @key_name = v
-      self
     end
 
     def public_key(v)
       @public_key = v
-      self
     end
 
     def build

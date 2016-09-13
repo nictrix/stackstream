@@ -23,32 +23,26 @@ module Stackstream
 
     def type(v)
       @type = v
-      self
     end
 
     def from_port(v)
       @from_port = v
-      self
     end
 
     def to_port(v)
       @to_port = v
-      self
     end
 
     def protocol(v)
       @protocol = v
-      self
     end
 
     def cidr_blocks(v)
       @cidr_blocks = v
-      self
     end
 
     def security_group(v)
       @security_group = v.provider_id
-      self
     end
 
     def build

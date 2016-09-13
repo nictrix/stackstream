@@ -23,27 +23,22 @@ module Stackstream
 
     def vpc(v)
       @vpc = v.provider_id
-      self
     end
 
     def cidr_block(v)
       @cidr_block = v
-      self
     end
 
     def availability_zone(v)
       @availability_zone = v
-      self
     end
 
     def map_public_ip_on_launch(v)
       @map_public_ip_on_launch = v
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

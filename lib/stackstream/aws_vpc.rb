@@ -22,17 +22,14 @@ module Stackstream
 
     def cidr_block(v)
       @cidr_block = v
-      self
     end
 
     def enable_dns_hostnames(v)
       @enable_dns_hostnames = v
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

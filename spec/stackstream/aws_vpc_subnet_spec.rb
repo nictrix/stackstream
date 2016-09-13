@@ -7,7 +7,7 @@ vpc_object = AwsVpc.new
 vpc_object.provider_id = 'test-id'
 
 aws_subnet 'my_subnet' do
-  vpc my_vpc
+  vpc vpc_object
 
   cidr_block '192.168.1.0/24'
   availability_zone 'us-east-1c'

@@ -22,18 +22,14 @@ module Stackstream
 
     def vpc(v)
       @vpc = v.provider_id
-      self
     end
 
     def route(v)
-      puts v.inspect
       @route = v
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

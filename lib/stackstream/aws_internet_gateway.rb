@@ -22,12 +22,10 @@ module Stackstream
 
     def vpc(v)
       @vpc = v.provider_id
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

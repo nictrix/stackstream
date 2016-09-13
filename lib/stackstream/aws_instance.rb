@@ -23,32 +23,26 @@ module Stackstream
 
     def ami(v)
       @ami = v
-      self
     end
 
     def instance_type(v)
       @instance_type = v
-      self
     end
 
     def key_name(v)
       @key_name = v
-      self
     end
 
     def vpc_security_group_ids(v)
       @vpc_security_group_ids = v
-      self
     end
 
     def subnet_id(v)
       @subnet_id = v
-      self
     end
 
     def tags(v)
       @tags = v
-      self
     end
 
     def build

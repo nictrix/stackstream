@@ -22,12 +22,10 @@ module Stackstream
 
     def subnet(v)
       @subnet = v.provider_id
-      self
     end
 
     def route_table(v)
       @route_table = v.provider_id
-      self
     end
 
     def build
