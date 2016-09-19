@@ -1,9 +1,14 @@
 require_relative 'shared'
+require 'fog/aws'
+require 'json'
 
 module Stackstream
   # Base class for VPCs defined in the DSL
   class AwsVpc
-    attr_accessor :provider_id, :cidr_block, :enable_dns_hostnames, :tags
+    using Shared::Builder
+
+    attr_accessor :name, :provider_id, :cidr_block, :instance_tenancy,
+                  :enable_dns_support, :enable_dns_hostnames, :tags
 
     def initialize(**args)
       args.each do |key, value|
@@ -11,14 +16,90 @@ module Stackstream
       end
     end
 
-    def create_or_modify
-      # Fog code goes here
-      @provider_id = 'vpc-3235sd2'
+    def transform
+      destroy_vpc if destroy_object?
+      create_vpc if @provider_id.nil?
+      modify_vpc
+      update_state
+      self
+    end
+
+    private
+
+    def connection
+      Fog::Compute.new provider: 'AWS', region: 'us-west-2',
+                       aws_access_key_id: '', aws_secret_access_key: ''
+    end
+
+    def update_state
+      content = state.dup
+      content['aws_vpc'].store(@name, new_object)
+      File.write('formation.state', JSON.pretty_generate(content))
+    end
+
+    def state
+      JSON.parse(File.read('formation.state')).stringify
+    rescue
+      {
+        'aws_vpc' => {
+          @name.to_s => {}
+        }
+      }
+    end
+
+    def current_object
+      state['aws_vpc'][@name]
+    end
+
+    def new_object
+      to_hash
+    end
+
+    def destroy_object?
+      return false if current_object['provider_id'].nil?
+
+      %w(cidr_block instance_tenancy).each do |property|
+        return true if current_object[property] != new_object[property]
+      end
+
+      false
+    end
+
+    def create_vpc
+      vpc = connection.create_vpc(@cidr_block,
+                                  'InstanceTenancy' => @instance_tenancy)
+
+      @provider_id = vpc.data[:body]['vpcSet'].first['vpcId']
+
+      sleep 1 until \
+      connection.vpcs.reload.get(@provider_id).state == 'available'
+    end
+
+    def modify_vpc
+      connection.modify_vpc_attribute(@provider_id,
+                                      'EnableDnsSupport.Value' =>
+                                      @enable_dns_support)
+      connection.modify_vpc_attribute(@provider_id,
+                                      'EnableDnsHostnames.Value' =>
+                                      @enable_dns_hostnames)
+      connection.create_tags(@provider_id, @tags)
+    end
+
+    def destroy_vpc
+      connection.delete_vpc(@provider_id)
+      # TODO: delete all the other objects within the vpc
+      #               except default route and default security group
+
+      sleep 1 until connection.vpcs.reload.get(@provider_id).nil?
+
+      @provider_id = nil
     end
   end
 
-  # Builds classes based on AwsVpc
+  # Builds AwsVpc
   class AwsVpcClassBuilder
+    using Shared::Builder
+
     def initialize(named_object)
       instance_variable_set('@named_object', named_object)
       yield self if block_given?
@@ -29,16 +110,28 @@ module Stackstream
     end
 
     def enable_dns_hostnames(v)
-      @enable_dns_hostnames = v
+      @enable_dns_hostnames = v || true
+    end
+
+    def enable_dns_support(v)
+      @enable_dns_support = v || true
+    end
+
+    def instance_tenancy(v)
+      @instance_tenancy = v || 'default'
     end
 
     def tags(v)
-      @tags = v
+      @tags = v.stringify
+      @tags.store('Name', @named_object) if @tags['Name'].nil?
     end
 
     def build
       AwsVpc.new(
+        name: @named_object,
         cidr_block: @cidr_block,
+        instance_tenancy: @instance_tenancy,
+        enable_dns_support: @enable_dns_support,
         enable_dns_hostnames: @enable_dns_hostnames,
         tags: @tags
       )
@@ -54,7 +147,7 @@ module Stackstream
         AwsVpcClassBuilder.new(named_object), &block
       ).build
 
-      object.create_or_modify
+      object.transform
 
       define_local_method(named_object, object)
     end

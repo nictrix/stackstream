@@ -3,8 +3,31 @@ require 'docile'
 module Stackstream
   # Shared methods
   module Shared
-    def classify(class_name)
-      class_name.split('_').collect(&:capitalize).join.freeze
+    module Builder
+      refine Object do
+        def to_hash
+          hash = {}
+
+          instance_variables.each do |variable|
+            hash[variable.to_s.delete("@")] = instance_variable_get(variable)
+          end
+
+          hash
+        end
+
+        def stringify
+          return self.reduce({}) do |memo, (k, v)|
+            memo.tap { |m| m[k.to_s] = v.stringify }
+          end if self.is_a? Hash
+
+          return self.reduce([]) do |memo, v|
+            memo << v.stringify
+            memo
+          end if self.is_a? Array
+
+          self
+        end
+      end
     end
   end
 
