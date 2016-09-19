@@ -38,8 +38,18 @@ module Stackstream
     end
 
     def state
-      JSON.parse(File.read('formation.state')).stringify
+      content = JSON.parse(File.read('formation.state')).stringify
+      
+      unless content.dig('aws_vpc', @name.to_s)
+        content.merge!(state_content_defaults) 
+      end
+
+      content
     rescue
+      state_content_defaults
+    end
+
+    def state_content_defaults
       {
         'aws_vpc' => {
           @name.to_s => {}
