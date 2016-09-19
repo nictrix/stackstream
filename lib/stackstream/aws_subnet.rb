@@ -8,7 +8,7 @@ module Stackstream
     using Shared::Builder
 
     attr_accessor :name, :provider_id, :vpc, :cidr_block, :availability_zone,
-                              :map_public_ip_on_launch, :tags
+                  :map_public_ip_on_launch, :tags
 
     def initialize(**args)
       args.each do |key, value|
@@ -39,9 +39,9 @@ module Stackstream
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
-      
+
       unless content.dig('aws_subnet', @name.to_s)
-        content.merge!(state_content_defaults) 
+        content.merge!(state_content_defaults)
       end
 
       content
@@ -65,7 +65,6 @@ module Stackstream
       to_hash
     end
 
-
     def destroy_object?
       return false if current_object['provider_id'].nil?
 
@@ -80,19 +79,18 @@ module Stackstream
       subnet = connection.create_subnet(@vpc, @cidr_block, 'AvailabilityZone' =>
         @availability_zone)
       @provider_id = subnet.data[:body]['subnet']['subnetId']
-      
-      until connection.subnets.reload.get(@provider_id).state == "available" do
+
+      until connection.subnets.reload.get(@provider_id).state == 'available'
         sleep 1
       end
     end
-
 
     def modify_subnet
       connection.modify_subnet_attribute(@provider_id, 'MapPublicIpOnLaunch' =>
         @map_public_ip_on_launch)
 
       # not implemented in fog/aws mocks
-      connection.create_tags(@provider_id, @tags) unless Fog.mock? 
+      connection.create_tags(@provider_id, @tags) unless Fog.mock?
     end
 
     def destroy_subnet
@@ -132,7 +130,7 @@ module Stackstream
 
     def tags(v)
       @tags = v.stringify
-      @tags.store('Name',@named_object) if @tags['Name'].nil?
+      @tags.store('Name', @named_object) if @tags['Name'].nil?
     end
 
     def build

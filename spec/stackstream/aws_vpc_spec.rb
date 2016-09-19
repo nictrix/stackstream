@@ -6,7 +6,11 @@ RSpec.describe Stackstream::AwsVpc do
   before(:each) do
     Fog.mock!
     Fog::Mock.reset
-    File.delete('formation.state') rescue nil
+    begin
+      File.delete('formation.state')
+    rescue
+      nil
+    end
   end
 
   context '#create' do
@@ -46,8 +50,13 @@ RSpec.describe Stackstream::AwsVpc do
   context '#destroy' do
     it 'should destroy before create' do
       allow(my_vpc).to receive(:state).and_return(
-      {'aws_vpc' => { 'my_vpc' => { 'cidr_block' => '10.10.0.0/16',
-        'instance_tenancy' => 'default', 'provider_id' => 'vpc-mock'}}})
+        'aws_vpc' => {
+          'my_vpc' => {
+            'cidr_block' => '10.10.0.0/16',
+            'instance_tenancy' => 'default', 'provider_id' => 'vpc-mock'
+          }
+        }
+      )
       expect(my_vpc.provider_id).to_not eq(my_vpc.transform.provider_id)
     end
   end
