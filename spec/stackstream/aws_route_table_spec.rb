@@ -18,6 +18,10 @@ RSpec.describe Stackstream::AwsRouteTable do
       expect(my_route_table).to be_a(Stackstream::AwsRouteTable)
     end
 
+    it 'should have vpc' do
+      expect(my_route_table.vpc).to match(/vpc-.*/)
+    end
+
     it 'should have tags' do
       expect(my_route_table.tags).to eq(
         'Name' => 'my_route_table', 'Environment' => 'Integration'

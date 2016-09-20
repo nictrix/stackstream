@@ -1,19 +1,92 @@
-require 'stackstream/shared'
+require_relative 'shared'
+require 'fog/aws'
+require 'json'
 
 module Stackstream
-  # Base class for VPCs defined in the DSL
+  # Base class for Route Table Associations defined in the DSL
   class AwsRouteTableAssociation
-    attr_accessor :provider_id, :subnet, :route_table, :tags
+    using Shared::Builder
 
-    def create_or_modify
-      # Fog code here
-      @provider_id = 'rtb-sdk23lss'
+    attr_accessor :name, :provider_id, :subnet, :route_table
+
+    def initialize(**args)
+      args.each do |key, value|
+        instance_variable_set("@#{key}", value)
+      end
+    end
+
+    def transform
+      destroy_route_table_association if destroy_object?
+      create_route_table_association if @provider_id.nil?
+      update_state
+      self
+    end
+
+    private
+
+    def connection
+      Fog::Compute.new provider: 'AWS', region: 'us-west-2',
+                       aws_access_key_id: '', aws_secret_access_key: ''
+    end
+
+    def update_state
+      content = state.dup
+      content['aws_route_table_association'].store(@name, new_object)
+      File.write('formation.state', JSON.pretty_generate(content))
+    end
+
+    def state
+      content = JSON.parse(File.read('formation.state')).stringify
+
+      unless content.dig('aws_route_table_association', @name.to_s)
+        content.merge!(state_content_defaults)
+      end
+
+      content
+    rescue
+      state_content_defaults
+    end
+
+    def state_content_defaults
+      {
+        'aws_route_table_association' => {
+          @name.to_s => {}
+        }
+      }
+    end
+
+    def current_object
+      state['aws_route_table_association'][@name]
+    end
+
+    def new_object
+      to_hash
+    end
+
+    def destroy_object?
+      return false if current_object['provider_id'].nil?
+
+      %w(subnet route_table).each do |property|
+        return true if current_object[property] != new_object[property]
+      end
+
+      false
+    end
+
+    def create_route_table_association
+      result = connection.associate_route_table(@route_table, @subnet)
+      @provider_id = result.data[:body]['associationId']
+    end
+
+    def destroy_route_table_association
+      connection.disassociate_route_table(@provider_id)
+      @provider_id = nil
     end
   end
 
-  # Builds classes based on AwsVpcSubnet
+  # Builds AwsRouteTableAssociation
   class AwsRouteTableAssociationClassBuilder
-    include Stackstream::Shared
+    using Shared::Builder
 
     def initialize(named_object)
       instance_variable_set('@named_object', named_object)
@@ -29,31 +102,26 @@ module Stackstream
     end
 
     def build
-      new_class = (Object.const_set classify(@named_object), Class.new(AwsRouteTableAssociation))
-      class_object = new_class.new
-      class_object.subnet = @subnet
-      class_object.route_table = @route_table
-      class_object.create_or_modify
-
-      class_object
+      AwsRouteTableAssociation.new(
+        name: @named_object,
+        subnet: @subnet,
+        route_table: @route_table
+      )
     end
   end
 
   # Runtime methods to inject when parsing the DSL
   module Stack
-    def aws_route_table_association(named_object = nil, &block)
-      if block_given?
-        object = Docile.dsl_eval(
-          AwsRouteTableAssociationClassBuilder.new(named_object), &block
-        ).build
+    include Stackstream::Stack::Shared
 
-        define_method(named_object) do
-          instance_variable_get("@__#{named_object}")
-        end
-        instance_variable_set("@__#{named_object}", object)
-      else
-        named_object
-      end
+    def aws_route_table_association(named_object, &block)
+      object = Docile.dsl_eval(
+        AwsRouteTableAssociationClassBuilder.new(named_object), &block
+      ).build
+
+      object.transform
+
+      define_local_method(named_object, object)
     end
   end
 end

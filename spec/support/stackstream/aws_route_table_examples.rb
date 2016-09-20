@@ -1,19 +1,11 @@
-require 'stackstream/aws_vpc'
+require 'support/stackstream/aws_vpc_examples'
 require 'stackstream/aws_route_table'
 
 RSpec.shared_context '#aws_route_table' do
+  include_context '#aws_vpc'
+
   let(:my_route_table) do
     extend Stackstream::Stack
-
-    aws_vpc 'my_vpc' do
-      cidr_block '192.168.0.0/16'
-      instance_tenancy false
-      enable_dns_support true
-      enable_dns_hostnames true
-      tags(
-        Environment: 'Integration'
-      )
-    end
 
     aws_route_table 'my_route_table' do
       vpc my_vpc

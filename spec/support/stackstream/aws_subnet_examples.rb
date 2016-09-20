@@ -1,19 +1,11 @@
-require 'stackstream/aws_vpc'
+require 'support/stackstream/aws_vpc_examples'
 require 'stackstream/aws_subnet'
 
 RSpec.shared_context '#aws_subnet' do
+  include_context '#aws_vpc'
+
   let(:my_subnet) do
     extend Stackstream::Stack
-
-    aws_vpc 'my_vpc' do
-      cidr_block '192.168.0.0/16'
-      instance_tenancy false
-      enable_dns_support true
-      enable_dns_hostnames true
-      tags(
-        Environment: 'Integration'
-      )
-    end
 
     aws_subnet 'my_subnet' do
       vpc my_vpc
