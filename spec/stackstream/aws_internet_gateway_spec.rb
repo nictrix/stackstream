@@ -1,23 +1,46 @@
-require 'stackstream/aws_internet_gateway'
-
-extend Stackstream::Stack
-
-AwsVpc = Struct.new(:provider_id)
-vpc_object = AwsVpc.new
-vpc_object.provider_id = 'test-id'
-
-aws_internet_gateway 'my_internet_gateway' do
-  vpc vpc_object
-
-  tags(
-    Name: 'my_internet_gateway'
-  )
-end
-
-aws_internet_gateway(my_internet_gateway)
+require 'support/stackstream/aws_internet_gateway_examples'
 
 RSpec.describe Stackstream::AwsInternetGateway do
-  it 'comes back as an object' do
-    expect(MyInternetGateway).not_to be nil
+  include_context '#aws_internet_gateway'
+
+  before(:each) do
+    Fog.mock!
+    Fog::Mock.reset
+    begin
+      File.delete('formation.state')
+    rescue
+      nil
+    end
+  end
+
+  context '#create' do
+    it 'should be the AwsInternetGateway class' do
+      expect(my_internet_gateway).to be_a(Stackstream::AwsInternetGateway)
+    end
+
+    it 'should have tags' do
+      expect(my_internet_gateway.tags).to eq(
+        'Name' => 'my_internet_gateway', 'Environment' => 'Integration'
+      )
+    end
+  end
+
+  context '#modify' do
+    it 'should be idempotent' do
+      expect(my_internet_gateway.provider_id).to eq(my_internet_gateway.transform.provider_id)
+    end
+  end
+
+  context '#destroy' do
+    it 'should destroy before create' do
+      allow(my_internet_gateway).to receive(:state).and_return(
+        'aws_internet_gateway' => {
+          'my_internet_gateway' => {
+           'provider_id' => 'igw-mock'
+          }
+        }
+      )
+      expect(my_internet_gateway.provider_id).to_not eq(my_internet_gateway.transform.provider_id)
+    end
   end
 end
