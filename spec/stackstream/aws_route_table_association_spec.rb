@@ -1,4 +1,4 @@
-require 'stackstream/aws_route_table_association'
+wrequire 'stackstream/aws_route_table_association'
 
 extend Stackstream::Stack
 
