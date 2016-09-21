@@ -7,7 +7,7 @@ module Stackstream
   class AwsVpc
     using Shared::Builder
 
-    attr_accessor :name, :provider_id, :cidr_block, :instance_tenancy,
+    attr_accessor :named_object, :provider_id, :cidr_block, :instance_tenancy,
                   :enable_dns_support, :enable_dns_hostnames, :tags
 
     def initialize(**args)
@@ -33,14 +33,14 @@ module Stackstream
 
     def update_state
       content = state.dup
-      content['aws_vpc'].store(@name, new_object)
+      content['aws_vpc'].store(@named_object, new_object)
       File.write('formation.state', JSON.pretty_generate(content))
     end
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
       
-      unless content.dig('aws_vpc', @name.to_s)
+      unless content.dig('aws_vpc', @named_object.to_s)
         content.merge!(state_content_defaults) 
       end
 
@@ -52,13 +52,13 @@ module Stackstream
     def state_content_defaults
       {
         'aws_vpc' => {
-          @name.to_s => {}
+          @named_object.to_s => {}
         }
       }
     end
 
     def current_object
-      state['aws_vpc'][@name]
+      state['aws_vpc'][@named_object]
     end
 
     def new_object
@@ -138,7 +138,7 @@ module Stackstream
 
     def build
       AwsVpc.new(
-        name: @named_object,
+        named_object: @named_object,
         cidr_block: @cidr_block,
         instance_tenancy: @instance_tenancy,
         enable_dns_support: @enable_dns_support,

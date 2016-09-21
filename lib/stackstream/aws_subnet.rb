@@ -7,7 +7,7 @@ module Stackstream
   class AwsSubnet
     using Shared::Builder
 
-    attr_accessor :name, :provider_id, :vpc, :cidr_block, :availability_zone,
+    attr_accessor :named_object, :provider_id, :vpc, :cidr_block, :availability_zone,
                   :map_public_ip_on_launch, :tags
 
     def initialize(**args)
@@ -33,14 +33,14 @@ module Stackstream
 
     def update_state
       content = state.dup
-      content['aws_subnet'].store(@name, new_object)
+      content['aws_subnet'].store(@named_object, new_object)
       File.write('formation.state', JSON.pretty_generate(content))
     end
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
 
-      unless content.dig('aws_subnet', @name.to_s)
+      unless content.dig('aws_subnet', @named_object.to_s)
         content.merge!(state_content_defaults)
       end
 
@@ -52,13 +52,13 @@ module Stackstream
     def state_content_defaults
       {
         'aws_subnet' => {
-          @name.to_s => {}
+          @named_object.to_s => {}
         }
       }
     end
 
     def current_object
-      state['aws_subnet'][@name]
+      state['aws_subnet'][@named_object]
     end
 
     def new_object
@@ -89,7 +89,6 @@ module Stackstream
       connection.modify_subnet_attribute(@provider_id, 'MapPublicIpOnLaunch' =>
         @map_public_ip_on_launch)
 
-      # not implemented in fog/aws mocks
       connection.create_tags(@provider_id, @tags) unless Fog.mock?
     end
 
@@ -135,7 +134,7 @@ module Stackstream
 
     def build
       AwsSubnet.new(
-        name: @named_object,
+        named_object: @named_object,
         cidr_block: @cidr_block,
         vpc: @vpc,
         availability_zone: @availability_zone,

@@ -1,19 +1,101 @@
-require 'stackstream/shared'
+require_relative 'shared'
+require 'fog/aws'
+require 'json'
 
 module Stackstream
-  # Base class for VPCs defined in the DSL
+  # Base class for Security Groups defined in the DSL
   class AwsSecurityGroup
-    attr_accessor :provider_id, :name, :description, :vpc, :tags
+    using Shared::Builder
 
-    def create_or_modify
-      # Fog code here
-      @provider_id = 'rtb-sdk23lss'
+    attr_accessor :named_object, :name, :provider_id, :description, :vpc, :tags
+
+    def initialize(**args)
+      args.each do |key, value|
+        instance_variable_set("@#{key}", value)
+      end
+    end
+
+    def transform
+      destroy_security_group if destroy_object?
+      create_security_group if @provider_id.nil?
+      modify_security_group
+      update_state
+      self
+    end
+
+    private
+
+    def connection
+      Fog::Compute.new provider: 'AWS', region: 'us-west-2',
+                       aws_access_key_id: '', aws_secret_access_key: ''
+    end
+
+    def update_state
+      content = state.dup
+      content['aws_security_group'].store(@named_object, new_object)
+      File.write('formation.state', JSON.pretty_generate(content))
+    end
+
+    def state
+      content = JSON.parse(File.read('formation.state')).stringify
+
+      unless content.dig('aws_security_group', @named_object.to_s)
+        content.merge!(state_content_defaults)
+      end
+
+      content
+    rescue
+      state_content_defaults
+    end
+
+    def state_content_defaults
+      {
+        'aws_security_group' => {
+          @named_object.to_s => {}
+        }
+      }
+    end
+
+    def current_object
+      state['aws_security_group'][@named_object]
+    end
+
+    def new_object
+      to_hash
+    end
+
+    def destroy_object?
+      return false if current_object['provider_id'].nil?
+
+      %w(name description vpc).each do |property|
+        return true if current_object[property] != new_object[property]
+      end
+
+      false
+    end
+
+    def create_security_group
+      result = connection.create_security_group(@name, @description, @vpc)
+
+      @provider_id = result.data[:body]['groupId']
+    end
+
+    def modify_security_group
+      connection.create_tags(@provider_id, @tags) unless Fog.mock?
+    end
+
+    def destroy_security_group
+      connection.delete_security_group(nil, @provider_id)
+
+      sleep 1 until connection.security_groups.reload.get(@provider_id).nil?
+
+      @provider_id = nil
     end
   end
 
-  # Builds classes based on AwsVpcSubnet
+  # Builds AwsSecurityGroup
   class AwsSecurityGroupClassBuilder
-    include Stackstream::Shared
+    using Shared::Builder
 
     def initialize(named_object)
       instance_variable_set('@named_object', named_object)
@@ -33,37 +115,33 @@ module Stackstream
     end
 
     def tags(v)
-      @tags = v
+      @tags = v.stringify
+      @tags.store('Name', @named_object) if @tags['Name'].nil?
     end
 
     def build
-      new_class = (Object.const_set classify(@named_object), Class.new(AwsSecurityGroup))
-      class_object = new_class.new
-      class_object.name = @name
-      class_object.description = @description
-      class_object.vpc = @vpc
-      class_object.tags = @tags
-      class_object.create_or_modify
-
-      class_object
+      AwsSecurityGroup.new(
+        named_object: @named_object,
+        name: @name,
+        description: @description,
+        vpc: @vpc,
+        tags: @tags
+      )
     end
   end
 
   # Runtime methods to inject when parsing the DSL
   module Stack
-    def aws_security_group(named_object = nil, &block)
-      if block_given?
-        object = Docile.dsl_eval(
-          AwsSecurityGroupClassBuilder.new(named_object), &block
-        ).build
+    include Stackstream::Stack::Shared
 
-        define_method(named_object) do
-          instance_variable_get("@__#{named_object}")
-        end
-        instance_variable_set("@__#{named_object}", object)
-      else
-        named_object
-      end
+    def aws_security_group(named_object, &block)
+      object = Docile.dsl_eval(
+        AwsSecurityGroupClassBuilder.new(named_object), &block
+      ).build
+
+      object.transform
+
+      define_local_method(named_object, object)
     end
   end
 end

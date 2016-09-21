@@ -7,7 +7,7 @@ module Stackstream
   class AwsRouteTableAssociation
     using Shared::Builder
 
-    attr_accessor :name, :provider_id, :subnet, :route_table
+    attr_accessor :named_object, :provider_id, :subnet, :route_table
 
     def initialize(**args)
       args.each do |key, value|
@@ -31,14 +31,14 @@ module Stackstream
 
     def update_state
       content = state.dup
-      content['aws_route_table_association'].store(@name, new_object)
+      content['aws_route_table_association'].store(@named_object, new_object)
       File.write('formation.state', JSON.pretty_generate(content))
     end
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
 
-      unless content.dig('aws_route_table_association', @name.to_s)
+      unless content.dig('aws_route_table_association', @named_object.to_s)
         content.merge!(state_content_defaults)
       end
 
@@ -50,13 +50,13 @@ module Stackstream
     def state_content_defaults
       {
         'aws_route_table_association' => {
-          @name.to_s => {}
+          @named_object.to_s => {}
         }
       }
     end
 
     def current_object
-      state['aws_route_table_association'][@name]
+      state['aws_route_table_association'][@named_object]
     end
 
     def new_object
@@ -103,7 +103,7 @@ module Stackstream
 
     def build
       AwsRouteTableAssociation.new(
-        name: @named_object,
+        named_object: @named_object,
         subnet: @subnet,
         route_table: @route_table
       )

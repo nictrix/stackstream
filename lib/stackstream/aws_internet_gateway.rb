@@ -7,7 +7,7 @@ module Stackstream
   class AwsInternetGateway
     using Shared::Builder
 
-    attr_accessor :name, :provider_id, :vpc, :tags
+    attr_accessor :named_object, :provider_id, :vpc, :tags
 
     def initialize(**args)
       args.each do |key, value|
@@ -37,14 +37,14 @@ module Stackstream
 
     def update_state
       content = state.dup
-      content['aws_internet_gateway'].store(@name, new_object)
+      content['aws_internet_gateway'].store(@named_object, new_object)
       File.write('formation.state', JSON.pretty_generate(content))
     end
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
 
-      unless content.dig('aws_internet_gateway', @name.to_s)
+      unless content.dig('aws_internet_gateway', @named_object.to_s)
         content.merge!(state_content_defaults)
       end
 
@@ -56,13 +56,13 @@ module Stackstream
     def state_content_defaults
       {
         'aws_internet_gateway' => {
-          @name.to_s => {}
+          @named_object.to_s => {}
         }
       }
     end
 
     def current_object
-      state['aws_internet_gateway'][@name]
+      state['aws_internet_gateway'][@named_object]
     end
 
     def new_object
@@ -124,7 +124,7 @@ module Stackstream
 
     def build
       AwsInternetGateway.new(
-        name: @named_object,
+        named_object: @named_object,
         vpc: @vpc,
         tags: @tags
       )
