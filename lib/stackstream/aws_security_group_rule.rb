@@ -1,20 +1,137 @@
-require 'stackstream/shared'
+require_relative 'shared'
+require 'fog/aws'
+require 'json'
 
 module Stackstream
-  # Base class for VPCs defined in the DSL
+  # Base class for Security Group Rules defined in the DSL
   class AwsSecurityGroupRule
-    attr_accessor :provider_id, :type, :from_port, :to_port, :protocol,
-                  :cidr_blocks, :security_group
+    using Shared::Builder
 
-    def create_or_modify
-      # Fog code here
-      @provider_id = 'rtb-sdk23lss'
+    attr_accessor :named_object, :type, :from_port, :to_port,
+                  :protocol, :cidr_blocks, :prefix_lists,
+                  :security_group, :source_security_groups
+
+    def initialize(**args)
+      args.each do |key, value|
+        instance_variable_set("@#{key}", value)
+      end
+    end
+
+    def transform
+      if destroy_object?
+        destroy_security_group_rule
+        create_security_group_rule
+      end
+
+      update_state
+      self
+    end
+
+    private
+
+    def connection
+      Fog::Compute.new provider: 'AWS', region: 'us-west-2',
+                       aws_access_key_id: '', aws_secret_access_key: ''
+    end
+
+    def update_state
+      content = state.dup
+      content['aws_security_group_rule'].store(@named_object, new_object)
+      File.write('formation.state', JSON.pretty_generate(content))
+    end
+
+    def state
+      content = JSON.parse(File.read('formation.state')).stringify
+
+      unless content.dig('aws_security_group_rule', @named_object.to_s)
+        content.merge!(state_content_defaults)
+      end
+
+      content
+    rescue
+      state_content_defaults
+    end
+
+    def state_content_defaults
+      {
+        'aws_security_group_rule' => {
+          @named_object.to_s => {}
+        }
+      }
+    end
+
+    def current_object
+      state['aws_security_group_rule'][@named_object]
+    end
+
+    def new_object
+      to_hash
+    end
+
+    def destroy_object?
+      return false if current_object == {}
+
+      %w(type from_port to_port protocol cidr_blocks prefix_lists
+         security_group source_security_groups).each do |property|
+        return true if current_object[property] != new_object[property]
+      end
+
+      false
+    end
+
+    def formatted_cidr_blocks
+      blocks = []
+      return blocks if @cidr_blocks.nil?
+
+      @cidr_blocks.each do |cidr_block|
+        blocks << { 'CidrIp' => cidr_block }
+      end
+
+      blocks
+    end
+
+    def formatted_source_security_groups
+      groups = []
+      return groups if @source_security_groups.nil?
+
+      @source_security_groups.each do |source_security_group|
+        name = connection.security_groups.get_by_id(source_security_group)
+        groups << { 'GroupName' => name, 'groupId' => source_security_group }
+      end
+
+      groups
+    end
+
+    def create_security_group_rule
+      permissions = { 'GroupId' => @security_group, 'IpPermissions' => [{
+        'IpProtocol' => @protocol, 'FromPort' => @from_port,
+        'ToPort' => @to_port, 'IpRanges' => formatted_cidr_blocks,
+        'Groups' => formatted_source_security_groups
+      }] }
+      if @type == 'ingress'
+        connection.authorize_security_group_ingress(permissions)
+      else
+        connection.authorize_security_group_egress(permissions)
+      end
+    end
+
+    def destroy_security_group_rule
+      permissions = { 'GroupId' => @security_group, 'IpPermissions' => [{
+        'IpProtocol' => @protocol, 'FromPort' => @from_port,
+        'ToPort' => @to_port, 'IpRanges' => formatted_cidr_blocks,
+        'Groups' => formatted_source_security_groups
+      }] }
+      if @type == 'ingress'
+        connection.revoke_security_group_ingress(permissions)
+      else
+        connection.revoke_security_group_egress(permissions)
+      end
     end
   end
 
-  # Builds classes based on AwsVpcSubnet
+  # Builds AwsSecurityGroupRule
   class AwsSecurityGroupRuleClassBuilder
-    include Stackstream::Shared
+    using Shared::Builder
 
     def initialize(named_object)
       instance_variable_set('@named_object', named_object)
@@ -41,40 +158,41 @@ module Stackstream
       @cidr_blocks = v
     end
 
+    def prefix_lists(v)
+      @prefix_lists = v
+    end
+
     def security_group(v)
       @security_group = v.provider_id
     end
 
-    def build
-      new_class = (Object.const_set classify(@named_object), Class.new(AwsSecurityGroupRule))
-      class_object = new_class.new
-      class_object.type = @type
-      class_object.from_port = @from_port
-      class_object.to_port = @to_port
-      class_object.protocol = @protocol
-      class_object.cidr_blocks = @cidr_blocks
-      class_object.security_group = @security_group
-      class_object.create_or_modify
+    def source_security_groups(v)
+      @source_security_groups = v.collect(&:provider_id)
+    end
 
-      class_object
+    def build
+      AwsSecurityGroupRule.new(
+        named_object: @named_object, type: @type,
+        from_port: @from_port, to_port: @to_port,
+        protocol: @protocol, cidr_blocks: @cidr_blocks,
+        prefix_lists: @prefix_lists, security_group: @security_group,
+        source_security_groups: @source_security_groups
+      )
     end
   end
 
   # Runtime methods to inject when parsing the DSL
   module Stack
-    def aws_security_group_rule(named_object = nil, &block)
-      if block_given?
-        object = Docile.dsl_eval(
-          AwsSecurityGroupRuleClassBuilder.new(named_object), &block
-        ).build
+    include Stackstream::Stack::Shared
 
-        define_method(named_object) do
-          instance_variable_get("@__#{named_object}")
-        end
-        instance_variable_set("@__#{named_object}", object)
-      else
-        named_object
-      end
+    def aws_security_group_rule(named_object, &block)
+      object = Docile.dsl_eval(
+        AwsSecurityGroupRuleClassBuilder.new(named_object), &block
+      ).build
+
+      object.transform
+
+      define_local_method(named_object, object)
     end
   end
 end
