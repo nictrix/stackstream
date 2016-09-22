@@ -39,9 +39,9 @@ module Stackstream
 
     def state
       content = JSON.parse(File.read('formation.state')).stringify
-      
+
       unless content.dig('aws_vpc', @named_object.to_s)
-        content.merge!(state_content_defaults) 
+        content.merge!(state_content_defaults)
       end
 
       content

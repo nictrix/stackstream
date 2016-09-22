@@ -3,13 +3,14 @@ require 'docile'
 module Stackstream
   # Shared methods
   module Shared
+    # Used in the builder classes
     module Builder
       refine Object do
         def to_hash
           hash = {}
 
           instance_variables.each do |variable|
-            hash[variable.to_s.delete("@")] = instance_variable_get(variable)
+            hash[variable.to_s.delete('@')] = instance_variable_get(variable)
           end
 
           hash
@@ -32,6 +33,7 @@ module Stackstream
   end
 
   module Stack
+    # Used in the direct method calls for the DSL
     module Shared
       def define_local_method(named_object, object)
         define_singleton_method(named_object) do

@@ -7,8 +7,8 @@ module Stackstream
   class AwsSubnet
     using Shared::Builder
 
-    attr_accessor :named_object, :provider_id, :vpc, :cidr_block, :availability_zone,
-                  :map_public_ip_on_launch, :tags
+    attr_accessor :named_object, :provider_id, :vpc, :cidr_block,
+                  :availability_zone, :map_public_ip_on_launch, :tags
 
     def initialize(**args)
       args.each do |key, value|

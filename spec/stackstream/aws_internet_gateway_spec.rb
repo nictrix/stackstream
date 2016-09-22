@@ -27,7 +27,9 @@ RSpec.describe Stackstream::AwsInternetGateway do
 
   context '#modify' do
     it 'should be idempotent' do
-      expect(my_internet_gateway.provider_id).to eq(my_internet_gateway.transform.provider_id)
+      expect(my_internet_gateway.provider_id).to eq(
+        my_internet_gateway.transform.provider_id
+      )
     end
   end
 
@@ -36,11 +38,13 @@ RSpec.describe Stackstream::AwsInternetGateway do
       allow(my_internet_gateway).to receive(:state).and_return(
         'aws_internet_gateway' => {
           'my_internet_gateway' => {
-           'provider_id' => 'igw-mock'
+            'provider_id' => 'igw-mock'
           }
         }
       )
-      expect(my_internet_gateway.provider_id).to_not eq(my_internet_gateway.transform.provider_id)
+      expect(my_internet_gateway.provider_id).to_not eq(
+        my_internet_gateway.transform.provider_id
+      )
     end
   end
 end

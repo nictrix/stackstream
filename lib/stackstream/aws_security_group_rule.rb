@@ -18,11 +18,8 @@ module Stackstream
     end
 
     def transform
-      if destroy_object?
-        destroy_security_group_rule
-        create_security_group_rule
-      end
-
+      destroy_security_group_rule if destroy_object?
+      create_security_group_rule
       update_state
       self
     end
