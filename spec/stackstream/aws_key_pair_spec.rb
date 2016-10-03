@@ -37,7 +37,7 @@ RSpec.describe Stackstream::AwsKeyPair do
           }
         }
       )
-      expect(my_key_pair.key_name).to_not eq(my_key_pair.transform.key_name)
+      expect(my_key_pair.transform.key_name).to_not eq('id_dsa')
     end
   end
 end
