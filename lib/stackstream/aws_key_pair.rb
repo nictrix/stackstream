@@ -65,7 +65,7 @@ module Stackstream
     end
 
     def destroy_object?
-      return false if current_object.nil?
+      return false if current_object == {}
 
       %w(key_name public_key).each do |property|
         return true if current_object[property] != new_object[property]

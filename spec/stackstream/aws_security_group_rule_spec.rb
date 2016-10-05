@@ -65,7 +65,8 @@ RSpec.describe Stackstream::AwsSecurityGroupRule do
             }
           )
         expect(my_security_group_rule_ingress_cidr.cidr_blocks).to_not eq(
-          ['192.168.1.0/24'])
+          ['192.168.1.0/24']
+        )
       end
     end
   end
