@@ -25,4 +25,18 @@ Guard::RSpec::Dsl.new(self).tap do |dsl|
 
     watch dsl.ruby.lib_files
   end
+
+  guard 'rubycritic' do
+    watch dsl.rspec.spec_files
+
+    watch dsl.rspec.spec_helper
+
+    watch dsl.rspec.spec_support
+
+    watch dsl.ruby.lib_files
+  end
+
+  guard(:bundler) { watch 'kitchen-terraform.gemspec' }
+
+  guard(:bundler_audit, run_on_start: true) { watch 'Gemfile.lock' }
 end

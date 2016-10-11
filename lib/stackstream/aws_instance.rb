@@ -15,6 +15,7 @@ module Stackstream
                   :associate_public_ip_address, :tenancy,
                   :placement_availability_zone, :placement_group,
                   :monitoring, :ebs_optimized
+                  # iam_instance_profile ?
 
     def initialize(**args)
       args.each do |key, value|
@@ -88,8 +89,7 @@ module Stackstream
     def image_attributes
       connection.describe_images(
         'ImageId' => [@ami]
-      ).data[:body]['imagesSet']
-                .first
+      ).data[:body]['imagesSet'].first
     end
 
     def root_block_device_from_image
@@ -98,18 +98,33 @@ module Stackstream
       end.first
     end
 
+    def root_block_device_stringify
+      @root_block_device.stringify
+    end
+
+    def root_block_device_volume_size
+      root_block_device_stringify['volume_size'] || 
+      root_block_device_from_image['volumeSize']
+    end
+
+    def root_block_device_delete_on_termination
+      root_block_device_stringify['delete_on_termination'] ||
+      root_block_device_from_image['deleteOnTermination']
+    end
+
+    def root_block_device_volume_type
+      root_block_device_stringify['volume_type'] ||
+      root_block_device_from_image['volumeType']
+    end
+
     def root_block_device_hash
-      rbd = @root_block_device.stringify
       {
         'device_name' => root_block_device_from_image['deviceName'],
         'snapshot' => root_block_device_from_image['snapshotId'],
-        'volume_size' =>
-        (rbd['volume_size'] || root_block_device_from_image['volumeSize']),
-        'delete_on_termination' => (rbd['delete_on_termination'] ||
-          root_block_device_from_image['deleteOnTermination']),
-        'volume_type' =>
-        (rbd['volume_type'] || root_block_device_from_image['volumeType']),
-        'iops' => rbd['iops']
+        'volume_size' => root_block_device_volume_size,
+        'delete_on_termination' => root_block_device_delete_on_termination,
+        'volume_type' => root_block_device_volume_type,
+        'iops' => root_block_device_stringify['iops']
       }
     end
 
