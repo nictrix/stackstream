@@ -68,6 +68,7 @@ module Stackstream
       return false if current_object == {}
 
       %w(key_name public_key).each do |property|
+        next if current_object[property].nil?
         return true if current_object[property] != new_object[property]
       end
 

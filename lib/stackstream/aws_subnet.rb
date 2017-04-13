@@ -69,6 +69,7 @@ module Stackstream
       return false if current_object['provider_id'].nil?
 
       %w(vpc cidr_block availability_zone).each do |property|
+        next if current_object[property].nil?
         return true if current_object[property] != new_object[property]
       end
 

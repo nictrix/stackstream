@@ -70,6 +70,7 @@ module Stackstream
 
       %w(type from_port to_port protocol cidr_blocks prefix_lists
          security_group source_security_groups).each do |property|
+        next if current_object[property].nil?
         return true if current_object[property] != new_object[property]
       end
 

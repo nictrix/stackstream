@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+require 'stackstream'
+require 'gli'
+
+include GLI::App
+include Stackstream
+
+program_desc 'manage code to create infrastructure'
+
+desc 'Show current version number'
+version Stackstream::VERSION
+
+desc 'Be verbose'
+switch 'verbose'
+
+sort_help :manually
+
+desc 'Project Management'
+arg_name 'project'
+
+command :project do |c|
+  c.default_desc 'Manage Projects'
+
+  c.desc 'Generate a project'
+  arg_name 'generate'
+
+  c.command :generate do |c1|
+    c1.action do |global_options, options, args|
+      help_now!('project name is required') if args.empty?
+      options[:project_name] = args.join(' ')
+      Directory.mkdir(options[:project_name])
+      Directory.mkdir("#{options[:project_name]}/stacks")
+      Directory.mkdir("#{options[:project_name]}/files")
+      File.write("#{options[:project_name]}/stacks/default.rb",'')
+    end
+  end
+
+  c.desc 'Deploy a project'
+  arg_name 'deploy'
+
+  c.command :deploy do |c1|
+    c1.action do |global_options, options, args|
+      extend Stackstream::Stack
+
+      require_relative "#{Dir.pwd}/stacks/default"
+    end
+  end
+end
+
+on_error do |ex|
+  puts ex
+end
+
+exit run(ARGV)

@@ -76,6 +76,7 @@ module Stackstream
       return false if current_object['provider_id'].nil?
 
       %w(ami subnet key_name).each do |property|
+        next if current_object[property].nil?
         return true if current_object[property] != new_object[property]
       end
 
@@ -103,7 +104,7 @@ module Stackstream
     end
 
     def root_block_device_volume_size
-      root_block_device_stringify['volume_size'] || 
+      root_block_device_stringify['volume_size'] ||
       root_block_device_from_image['volumeSize']
     end
 

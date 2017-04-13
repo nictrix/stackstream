@@ -38,7 +38,7 @@ RSpec.describe Stackstream::AwsInternetGateway do
       allow(my_internet_gateway).to receive(:state).and_return(
         'aws_internet_gateway' => {
           'my_internet_gateway' => {
-            'provider_id' => 'igw-mock'
+            'provider_id' => 'igw-mock', 'vpc' => 'vpc-mock'
           }
         }
       )

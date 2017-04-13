@@ -28,7 +28,8 @@ module Stackstream
 
     def connection
       Fog::Compute.new provider: 'AWS', region: 'us-west-2',
-                       aws_access_key_id: '', aws_secret_access_key: ''
+                       aws_access_key_id: ENV['AWS_ACCESS_KEY'],
+                       aws_secret_access_key: ENV['AWS_SECRET_ACCESS_KEY']
     end
 
     def update_state
@@ -69,6 +70,7 @@ module Stackstream
       return false if current_object['provider_id'].nil?
 
       %w(cidr_block instance_tenancy).each do |property|
+        next if current_object[property].nil?
         return true if current_object[property] != new_object[property]
       end
 
